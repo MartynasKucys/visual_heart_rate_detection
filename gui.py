@@ -18,25 +18,26 @@ def get_frame_bytes(cap, encoding=".png"):
     img_bytes = cv.imencode(encoding, frame)[1].tobytes()
     return img_bytes
 
-def get_face(img, classifier):
+def get_forehead(img, classifier):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     faces = classifier.detectMultiScale(gray, 1.1, 4)
     if len(faces) >= 1:
         x,y,w,h =  faces[0]
-        return img[y:y+h,x:x+w]
+
+        # only show the forehead
+        return img[y + int(np.round(h*0.05)) :y+ int(np.round(h*0.3)) ,x:x+w]
     else:
         return None 
 
 def get_face_frame_bytes(cap, classifier, encoding=".png"):
     ret_val, frame = cap.read()
-    face = get_face(frame, classifier)
+    face = get_forehead(frame, classifier)
     if face is None:
         return cv.imencode(encoding, np.full((100,100,3), fill_value=100 ))[1].tobytes()
     else:
         img_bytes = cv.imencode(encoding, face)[1].tobytes()
         return img_bytes
-
 
 
 def run():
