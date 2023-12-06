@@ -1,17 +1,20 @@
 import numpy as np
 import cv2 as cv
 import PySimpleGUI as sg
+
 from datetime import datetime
 from scipy.signal import butter, lfilter
 from scipy.fft import fft
-from scipy.signal.windows import hamming
 
 
 def start_capturing():
     cap = cv.VideoCapture(0)
     if not cap.isOpened():
         raise Exception("Cannot open camera")
-    return cap
+
+    frame_rate = int(cap.get(cv.CAP_PROP_FPS))
+
+    return cap, frame_rate
 
 
 def end_capturing(cap):
@@ -34,7 +37,7 @@ def get_face_area(img, classifier):
 
         # only show the forehead
         return img[y : y + h, x : x + w]
-        return img[y + int(np.round(h * 0.05)) : y + int(np.round(h * 0.3)), x : x + w]
+        # return img[y + int(np.round(h * 0.05)) : y + int(np.round(h * 0.3)), x : x + w]
     else:
         return None
 
@@ -56,7 +59,6 @@ def preprocess_face(face_img):
     else:
         gray_face = face_img
 
-    # blurred_face = cv.GaussianBlur(gray_face, (0, 0), 3)
     amplified_face = cv.equalizeHist(gray_face)
 
     return amplified_face
@@ -71,16 +73,6 @@ def apply_bandpass_filter(signal, fs, lowcut, highcut, order=5):
     return filtered_signal
 
 
-# def find_peak_frequency(signal, fs):
-#     hamming_window = hamming(len(signal))
-#     windowed_signal = signal * hamming_window
-#     spectrum = np.abs(fft(windowed_signal))
-#     freqs = np.fft.fftfreq(len(spectrum), 1 / fs)
-#     max_freq_index = np.argmax(spectrum)
-#     peak_frequency = freqs[max_freq_index]
-#     return peak_frequency
-
-
 def find_peak_frequency(signal, fs):
     spectrum = np.fft.fft(signal)
     freqs = np.fft.fftfreq(len(signal), 1 / fs)
@@ -91,19 +83,18 @@ def find_peak_frequency(signal, fs):
 
 
 def get_current_bpm(history, fs, time_window):
-    if len(history) >= fs * time_window:
-        data = np.array([item for item in history[-fs * time_window :]])
-        filtered_data = apply_bandpass_filter(data, fs, 0.8, 3)
-        peak_frequency = find_peak_frequency(filtered_data, fs)
-        heart_rate = int(round(60 * peak_frequency))
-        return heart_rate
-    else:
-        return None
+    data = np.array([item for item in history[-fs * time_window :]])
+    filtered_data = apply_bandpass_filter(data, fs, 0.8, 3)
+    peak_frequency = find_peak_frequency(filtered_data, fs)
+    heart_rate = int(round(60 * peak_frequency))
+    return heart_rate
 
 
 def run():
-    fs = 30
-    time_window = 10
+    cap, fs = start_capturing()
+    print(f"Frame rate: {fs}")
+
+    time_window = 1
 
     face_cascade = cv.CascadeClassifier(
         cv.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -122,7 +113,6 @@ def run():
     ]
     window = sg.Window("Visual Heart Rate Detection", gui_layout)
     sg.theme("Black")
-    cap = start_capturing()
 
     history_measurements = []
 
@@ -143,7 +133,6 @@ def run():
             average_color = np.average(amplified_face)
             history_measurements.append(average_color)
 
-            # Update the progress bar and calculation status
         if len(history_measurements) < fs * time_window:
             window["progress_bar"].update(len(history_measurements))
             window["calculation_status"].update("Collecting data...", visible=True)
