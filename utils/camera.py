@@ -2,29 +2,42 @@ import cv2 as cv
 
 
 class Camera:
+    """
+    This class implements camera handling operations.
+    """
+
     def __init__(self):
-        pass
+        """
+        Initializes the camera instance by attempting to open a video capture device or a video file.
+        """
+        # self.cap = cv.VideoCapture(0)
+        self.cap = cv.VideoCapture("video.mp4")
 
-    # def start(self):
-    #     self.cap = cv.VideoCapture(0)
-    #     if not self.cap.isOpened():
-    #         raise Exception("Cannot open camera")
-    #     return self.cap
-
-    # Add the following lines in your code
-
-    def start_capturing(self):
-        self.cap = cv.VideoCapture(0)
         if not self.cap.isOpened():
             raise Exception("Cannot open camera")
 
-        self.fps = self.cap.get(cv.CAP_PROP_FPS)  # Get frames per second
-        if self.fps == 0.0:
-            # If the camera doesn't provide fps information, you might need to set it manually
-            self.fps = 30.0  # Set a default value (e.g., 30 fps)
+        self.frame_rate = int(self.cap.get(cv.CAP_PROP_FPS)) | 30
 
-        return self.cap, self.fps
+    def get_frame(self, encoding: str = ".png"):
+        """
+        Captures a single frame from the camera or video file.
 
-    def end(self, cap):
+        Args:
+            encoding: The image encoding format to be used for conversion.
+
+        Returns:
+            tuple: (encoded frame bytes, original frame).
+        """
+        ret_val, frame = self.cap.read()
+        if not ret_val:
+            raise Exception("Failed to capture frame")
+        img_bytes = cv.imencode(encoding, frame)[1].tobytes()
+
+        return img_bytes, frame
+
+    def release(self):
+        """
+        Releases the camera or video file resources.
+        """
         self.cap.release()
         cv.destroyAllWindows()

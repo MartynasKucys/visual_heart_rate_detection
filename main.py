@@ -1,55 +1,49 @@
-# main.py
-
-import PySimpleGUI as sg
-from datetime import datetime
-from time import time
-import cv2 as cv
-from utils.face import FaceProcessing
 from utils.camera import Camera
+from utils.image_processing import ImageProcessor
+from utils.gui import GUI
+from utils.calculations import HRSignalProcessor
+import numpy as np
+import PySimpleGUI as sg
 
 
 def run():
-    gui_layout = [
-        [sg.Text("BPM: ", key="bpm_counter")],
-        [sg.Image(filename="", key="image"), sg.Image(filename="", key="face")],
-    ]
-    window = sg.Window("Visual heart rate detection", gui_layout).Finalize()
-    window.Maximize()
-    sg.theme("Black")
+    """
+    Runs the heart rate calculation application.
+    """
+    camera = Camera()
+    image_processor = ImageProcessor()
+    hr_processor = HRSignalProcessor(camera.frame_rate)
+    gui = GUI(camera.frame_rate, time_window=5)
 
-    process = Camera()
-    face = FaceProcessing()
-
-    cap, fps = process.start_capturing()
-    face_cascade = cv.CascadeClassifier(
-        cv.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    eye_cascade = cv.CascadeClassifier(cv.data.haarcascades + "haarcascade_eye.xml")
-
-    history_measurements = []  # [(processed_face_frame, time_stamp), ... ]
+    history_measurements = []
 
     while True:
-        event, values = window.read(timeout=20)
+        event, values = gui.read(timeout=1000 // camera.frame_rate)
 
         if event == "Exit" or event == sg.WIN_CLOSED:
             break
 
-        current_frame_bytes, current_frame = face.get_frame(cap)
-        face_frame_bytes, face_frame = face.get_face_frame_bytes(
-            current_frame, face_cascade, eye_cascade
+        current_frame_bytes, current_frame = camera.get_frame()
+        face_frame_bytes, face_frame = image_processor.get_face_frame_bytes(
+            current_frame
         )
 
-        history_measurements.append(
-            (face.preprocess_face_ica(face_frame, fps), datetime.now())
+        amplified_face = image_processor.preprocess_face(face_frame)
+
+        if amplified_face is not None:
+            average_color = np.average(amplified_face)
+            history_measurements.append(average_color)
+
+        heart_rate = None
+        if len(history_measurements) >= camera.frame_rate:
+            heart_rate = hr_processor.get_current_bpm(history_measurements, 1)
+
+        gui.update(
+            current_frame_bytes, face_frame_bytes, history_measurements, heart_rate
         )
 
-        window["image"].update(data=current_frame_bytes)
-        window["face"].update(data=face_frame_bytes)
-        window["bpm_counter"].update(
-            "BPM: " + str(face.get_current_bpm(history_measurements, 10))
-        )
-
-    process.end(cap)
+    camera.release()
+    gui.close()
 
 
 if __name__ == "__main__":
