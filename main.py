@@ -4,7 +4,12 @@ from utils.gui import GUI
 from utils.calculations import HRSignalProcessor
 import numpy as np
 import PySimpleGUI as sg
+import pickle
+from  datetime import datetime
 
+
+def process_data():
+    pass 
 
 def run():
     """
@@ -16,11 +21,19 @@ def run():
     gui = GUI(camera.frame_rate, time_window=5)
 
     history_measurements = []
+    time_measurements = []
+
 
     while True:
         event, values = gui.read(timeout=1000 // camera.frame_rate)
 
         if event == "Exit" or event == sg.WIN_CLOSED:
+
+            with open('data.p', "wb") as f:
+                pickle.dump(history_measurements, f)
+            with open('times.p', "wb") as f:
+                pickle.dump(time_measurements, f)
+
             break
 
         current_frame_bytes, current_frame = camera.get_frame()
@@ -33,6 +46,7 @@ def run():
         if amplified_face is not None:
             average_color = np.average(amplified_face)
             history_measurements.append(average_color)
+            time_measurements.append(datetime.now())
 
         heart_rate = None
         if len(history_measurements) >= camera.frame_rate:

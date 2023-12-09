@@ -51,8 +51,8 @@ class GUI:
         else:
             self.window["progress_bar"].update(self.window["progress_bar"].MaxValue)
             self.window["calculation_status"].update("Data collected", visible=True)
-            if heart_rate is not None and 48 < heart_rate < 180:
-                self.window["bpm_counter"].update("BPM: " + str(heart_rate))
+        if heart_rate is not None and 48 < heart_rate < 180 or True:
+            self.window["bpm_counter"].update("BPM: " + str(heart_rate))
 
         self.window["image"].update(data=current_frame_bytes)
         self.window["face"].update(data=face_frame_bytes)

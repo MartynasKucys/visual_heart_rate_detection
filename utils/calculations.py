@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.signal import butter, lfilter
+import matplotlib.pyplot as plt
 
 
 class HRSignalProcessor:
@@ -39,7 +40,16 @@ class HRSignalProcessor:
         low = lowcut / nyquist
         high = highcut / nyquist
         b, a = butter(order, [low, high], btype="band")
+
         filtered_signal = lfilter(b, a, signal)
+        if len(signal) >= 31 * 5:
+            plt.plot(range(len(signal)), signal)
+            plt.title("signal")
+            plt.show()
+            plt.plot(range(len(filtered_signal)), filtered_signal)
+            plt.title("filtered signal")
+            plt.show()
+    
         return filtered_signal
 
     def find_peak_frequency(self, signal: np.ndarray):
@@ -52,11 +62,28 @@ class HRSignalProcessor:
         Returns:
             float: Peak frequency in Hz within the given signal.
         """
-        spectrum = np.fft.fft(signal)
-        freqs = np.fft.fftfreq(len(signal), 1 / self.fs)
-        max_freq_index = np.argmax(np.abs(spectrum))
-        peak_frequency = freqs[max_freq_index]
-        return peak_frequency
+        spectrum = np.fft.fft(signal).real
+        freqs = np.fft.fftfreq(len(signal), 1 / self.fs).real
+        # freqs = np.fft.fftfreq(len(signal), 1 ).real
+        # max_freq_index = np.argmax(np.abs(spectrum))
+        # peak_frequency = freqs[max_freq_index]
+        first_n_freqs = 3
+        # print("freqs:", freqs[:first_n_freqs])
+        # print("spectrum:", np.abs(spectrum[:first_n_freqs]))
+        # print("----", np.argmax(np.abs(spectrum[:4)))
+        freqs[0] = 0.00001
+        mult = freqs[:first_n_freqs] * np.abs(spectrum[:first_n_freqs])
+        # print("mult: ",mult)
+        top_sum = np.sum(mult)
+        # print("top:", top_sum)
+        bottom_sum = np.sum(np.abs(spectrum))
+        # print("bottom: ", bottom_sum)
+        wa = top_sum/bottom_sum
+        # print(wa)
+        # print()
+        # print()
+        # print(type(wa))
+        return wa
 
     def get_current_bpm(self, history: list, time_window: int):
         """
@@ -73,4 +100,5 @@ class HRSignalProcessor:
         filtered_data = self.apply_bandpass_filter(data)
         peak_frequency = self.find_peak_frequency(filtered_data)
         heart_rate = int(round(60 * peak_frequency))
-        return heart_rate
+        # print(heart_rate)
+        return heart_rate 

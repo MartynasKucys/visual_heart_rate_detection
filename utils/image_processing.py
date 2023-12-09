@@ -30,7 +30,7 @@ class ImageProcessor:
         faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
         if len(faces) >= 1:
             x, y, w, h = faces[0]
-            return img[y : y + h, x : x + w]
+            return img[y: y + h, x+int(w*0.1): x + int(w*0.9)]
         else:
             return None
 
@@ -46,7 +46,10 @@ class ImageProcessor:
         """
         if face_img is not None:
             if len(face_img.shape) == 3:
-                gray_face = cv.cvtColor(face_img, cv.COLOR_BGR2GRAY)
+                # look at only the red color
+                # print(np.array(face_img).shape)
+                gray_face = face_img[:, :, 2]
+                # gray_face = cv.cvtColor(face_img, cv.COLOR_BGR2GRAY)
             else:
                 gray_face = face_img
 
@@ -69,7 +72,8 @@ class ImageProcessor:
         preprocessed_face = self.preprocess_face(face)
 
         if preprocessed_face is None:
-            a = cv.imencode(encoding, np.full((100, 100, 3), fill_value=100))[1]
+            a = cv.imencode(encoding, np.full(
+                (100, 100, 3), fill_value=100))[1]
             return a.tobytes(), a
         else:
             a = cv.imencode(encoding, preprocessed_face)[1]

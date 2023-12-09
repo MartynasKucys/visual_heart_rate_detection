@@ -10,8 +10,8 @@ class Camera:
         """
         Initializes the camera instance by attempting to open a video capture device or a video file.
         """
-        # self.cap = cv.VideoCapture(0)
-        self.cap = cv.VideoCapture("video.mp4")
+        self.cap = cv.VideoCapture(0)
+        # self.cap = cv.VideoCapture("video.mp4")
 
         if not self.cap.isOpened():
             raise Exception("Cannot open camera")
