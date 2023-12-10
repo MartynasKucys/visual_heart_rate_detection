@@ -50,7 +50,9 @@ class ImageProcessor:
             else:
                 gray_face = face_img
 
-            amplified_face = cv.equalizeHist(gray_face)
+            clahe = cv.createCLAHE(clipLimit=2, tileGridSize=(8, 8))
+            amplified_face = clahe.apply(gray_face)
+
             return amplified_face
         return None
 

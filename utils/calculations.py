@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, find_peaks
 
 
 class HRSignalProcessor:
@@ -21,7 +21,7 @@ class HRSignalProcessor:
         signal: np.ndarray,
         lowcut: float = 0.8,
         highcut: float = 3,
-        order: int = 5,
+        order: int = 8,
     ):
         """
         Applies a Butterworth bandpass filter to a given signal.
@@ -54,9 +54,11 @@ class HRSignalProcessor:
         """
         spectrum = np.fft.fft(signal)
         freqs = np.fft.fftfreq(len(signal), 1 / self.fs)
-        max_freq_index = np.argmax(np.abs(spectrum))
-        peak_frequency = freqs[max_freq_index]
-        return peak_frequency
+        peaks, _ = find_peaks(np.abs(spectrum), height=0.1 * np.abs(spectrum).max())
+        if peaks.size > 0:
+            peak_frequency = freqs[peaks[0]]
+            return peak_frequency
+        return 0
 
     def get_current_bpm(self, history: list, time_window: int):
         """
@@ -72,5 +74,6 @@ class HRSignalProcessor:
         data = np.array(history[-self.fs * time_window :])
         filtered_data = self.apply_bandpass_filter(data)
         peak_frequency = self.find_peak_frequency(filtered_data)
+        print(peak_frequency)
         heart_rate = int(round(60 * peak_frequency))
         return heart_rate
