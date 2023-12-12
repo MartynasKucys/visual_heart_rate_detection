@@ -2,8 +2,10 @@ from utils.camera import Camera
 from utils.image_processing import ImageProcessor
 from utils.gui import GUI
 from utils.calculations import HRSignalProcessor
+from utils.magnification import Euler_Video_Magnification
 import numpy as np
 import PySimpleGUI as sg
+import cv2 as cv
 
 
 def run():
@@ -11,10 +13,11 @@ def run():
     Runs the heart rate calculation application.
     """
     camera = Camera()
-    image_processor = ImageProcessor()
+    image_processor = ImageProcessor(camera.frame_rate)
     hr_processor = HRSignalProcessor(camera.frame_rate)
     gui = GUI(camera.frame_rate, time_window=5)
-
+    EVM = Euler_Video_Magnification(
+        level=3, amplification=20, fps=4)
     history_measurements = []
 
     while True:
@@ -24,22 +27,23 @@ def run():
             break
 
         current_frame_bytes, current_frame = camera.get_frame()
-        face_frame_bytes, face_frame = image_processor.get_face_frame_bytes(
-            current_frame
-        )
+        x, y, h, w = image_processor.get_face_area(current_frame)
 
-        amplified_face = image_processor.preprocess_face(face_frame)
+        amplified_face = image_processor.preprocess_face(current_frame, EVM)
+        face = cv.convertScaleAbs(amplified_face[y:y+w, x:x +
+                                                 h] if x != None else np.zeros((100, 100, 3)))
 
-        if amplified_face is not None:
-            average_color = np.average(amplified_face)
-            history_measurements.append(average_color)
+        if amplified_face is not None and len(EVM.frames) >= 20:
+
+            history_measurements.append(np.average(face))
 
         heart_rate = None
         if len(history_measurements) >= camera.frame_rate:
             heart_rate = hr_processor.get_current_bpm(history_measurements, 1)
 
         gui.update(
-            current_frame_bytes, face_frame_bytes, history_measurements, heart_rate
+            current_frame_bytes, cv.imencode(".png", face)[
+                1].tobytes(), history_measurements, heart_rate
         )
 
     camera.release()
