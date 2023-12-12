@@ -17,8 +17,7 @@ class GUI:
         self.time_window = time_window
         self.layout = [
             [sg.Text("BPM: ", key="bpm_counter")],
-            [sg.Image(filename="", key="image"),
-             sg.Image(filename="", key="face")],
+            [sg.Image(filename="", key="image"), sg.Image(filename="", key="face")],
             [sg.Text("", key="calculation_status", visible=False)],
             [
                 sg.ProgressBar(
@@ -49,13 +48,10 @@ class GUI:
 
         if len(history_measurements) < self.window["progress_bar"].MaxValue:
             self.window["progress_bar"].update(len(history_measurements))
-            self.window["calculation_status"].update(
-                "Collecting data...", visible=True)
+            self.window["calculation_status"].update("Collecting data...", visible=True)
         else:
-            self.window["progress_bar"].update(
-                self.window["progress_bar"].MaxValue)
-            self.window["calculation_status"].update(
-                "Data collected", visible=True)
+            self.window["progress_bar"].update(self.window["progress_bar"].MaxValue)
+            self.window["calculation_status"].update("Data collected", visible=True)
             if heart_rate is not None:  # and 48 < heart_rate < 180:
                 self.window["bpm_counter"].update("BPM: " + str(heart_rate))
 

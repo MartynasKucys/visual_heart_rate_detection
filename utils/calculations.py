@@ -54,13 +54,15 @@ class HRSignalProcessor:
         """
         spectrum = np.array(np.fft.fft(signal).real)
         freqs = np.array(np.fft.fftfreq(len(signal), 1 / self.fs).real)
-        # max_freq_index = np.argmax(np.abs(spectrum))
-        print("-"*50)
-        print("s", spectrum)
-        print("f", freqs)
+
+        print("-" * 50)
+        print(f"Spectrum: {spectrum}")
+        print(f"Frequencies: {freqs}")
+
         avg_sum_level = 3
         peak_frequency = sum(
-            freqs[:avg_sum_level] * np.abs(spectrum[:avg_sum_level])) / sum(np.abs(spectrum[:avg_sum_level]))
+            freqs[:avg_sum_level] * np.abs(spectrum[:avg_sum_level])
+        ) / sum(np.abs(spectrum[:avg_sum_level]))
         return peak_frequency
 
     def get_current_bpm(self, history: list, time_window: int):
@@ -74,7 +76,7 @@ class HRSignalProcessor:
         Returns:
             int: Estimated current heart rate.
         """
-        data = np.array(history[-self.fs * time_window:])
+        data = np.array(history[-self.fs * time_window :])
         filtered_data = self.apply_bandpass_filter(data)
         peak_frequency = self.find_hr_frequency(filtered_data)
         heart_rate = int(round(60 * peak_frequency))

@@ -1,61 +1,61 @@
-import cv2
+import cv2 as cv
 from skimage.transform import resize
 import numpy as np
 from scipy import fftpack, signal
 
 
-class Euler_Video_Magnification(object):
+class EulerMagnification(object):
+    """
+    This class implements Eulerian Video Magnification for revealing subtle changes in videos.
+    """
 
-    def __init__(self,
-                 level,
-                 amplification,
-                 fps,
-                 colorspace='YcbCr',
-                 backward_frames=15):
-
+    def __init__(
+        self, level: int, amplification: float, fps: int, backward_frames: int = 15
+    ):
+        """
+        Args:
+            level: Number of levels in pyramids.
+            amplification: Amplification factor for the magnification process.
+            fps: Frame rate of the video being processed.
+            backward_frames: Number of frames to look backward for temporal processing.
+        """
         self.frames = []
         self.pyramids = []
         self.laplacian_pyramids = [[] for i in range(level)]
-        self.colorspace = colorspace
         self.level = level
         self.amplification = amplification
         self.fps = fps
         self.backward_frames = backward_frames
 
-    def add_frame(self, frame, max_x, max_y):
-        frame = frame + \
-            np.zeros((max_x-frame.shape[0], max_y-frame.shape[1], 3))
-        self.frames.append(frame)
+    def gaussian_pyramid(self, frame: np.ndarray):
+        """
+        Constructs a Gaussian pyramid for a given frame.
 
-    def BGR_YCrCb(self,
-                  frame):
+        Args:
+            frame: Video frame for which the Gaussian pyramid is to be constructed.
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
-        self.frames.append(frame)
-
-        return frame
-
-    def YCrCb_BGR(self, frame):
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_YCrCb2BGR)
-
-        return frame
-
-    def gaussian_pyramid(self,
-                         frame):
-
+        Returns:
+            list: List of np.ndarray, each being a level of the Gaussian pyramid, downsampled sequentially.
+        """
         subsample = np.copy(frame)
         pyramid_list = [subsample]
 
         for i in range(self.level):
-            subsample = cv2.pyrDown(subsample)
+            subsample = cv.pyrDown(subsample)
             pyramid_list.append(subsample)
 
         return pyramid_list
 
-    def build_gaussian_pyramid(self,
-                               tensor):
+    def build_gaussian_pyramid(self, tensor: np.ndarray):
+        """
+        Constructs a Gaussian pyramid for a given frame and returns the smallest level.
 
+        Args:
+            tensor: Video frame for which the Gaussian pyramid is to be constructed.
+
+        Returns:
+            np.ndarray: Smallest level of the constructed Gaussian pyramid.
+        """
         frame = tensor
         pyr = self.gaussian_pyramid(frame)
         gaussian_frame = pyr[-1]
@@ -63,26 +63,42 @@ class Euler_Video_Magnification(object):
 
         return tensor_data
 
-    def laplacian_pyramid(self,
-                          frame):
+    def laplacian_pyramid(self, frame: np.ndarray):
+        """
+        Constructs a Laplacian pyramid for a given frame.
 
+        Args:
+            frame: Video frame for which the Laplacian pyramid is to be constructed.
+
+        Returns:
+            list: List of np.ndarray, each being a level of the Laplacian pyramid, representing the
+                  difference between levels in the Gaussian pyramid.
+        """
         gaussian_pyramids = self.gaussian_pyramid(frame)
         laplacian_pyramids = []
 
         for i in range(self.level, 0, -1):
-            upper = cv2.pyrUp(gaussian_pyramids[i])
-            sample = cv2.subtract(gaussian_pyramids[i-1], upper)
+            upper = cv.pyrUp(gaussian_pyramids[i])
+            sample = cv.subtract(gaussian_pyramids[i - 1], upper)
             laplacian_pyramids.append(sample)
 
         return laplacian_pyramids
 
-    # bandpass filter
-    def bandpass_filter(self,
-                        tensor,
-                        low,
-                        high,
-                        axis=0):
+    def bandpass_filter(
+        self, tensor: list | np.ndarray, low: float, high: float, axis: int = 0
+    ):
+        """
+        Applies a bandpass filter to a sequence of frames.
 
+        Args:
+            tensor: Sequence of frames to be filtered.
+            low: Lower frequency bound of the bandpass filter.
+            high: Upper frequency bound of the bandpass filter.
+            axis: Axis along which the FFT is computed.
+
+        Returns:
+            np.ndarray: Bandpass-filtered sequence of frames.
+        """
         frames_arr = np.asarray(tensor, dtype=np.float64)
         fft = fftpack.fft(frames_arr, axis=axis)
         frequencies = fftpack.fftfreq(frames_arr.shape[0], d=1.0 / self.fps)
@@ -96,120 +112,62 @@ class Euler_Video_Magnification(object):
 
         return np.abs(iff)
 
-    def amplify_frame(self,
-                      frame):
+    def amplify_frame(self, frame: np.ndarray):
+        """
+        Amplifies a frame by the set amplification factor.
+
+        Args:
+            frame: Frame to be amplified.
+
+        Returns:
+            np.ndarray: Amplified frame.
+        """
         return frame * self.amplification
 
-    def reconstruct_video(self,
-                          amp_video,
-                          original_video):
-        final_video = np.zeros(original_video.shape)
-        for i in range(0, amp_video.shape[0]):
-            img = amp_video[i]
-            for x in range(self.level):
-                img = cv2.pyrUp(img)
-            img = img+original_video[i]
-            final_video[i] = img
-        return final_video
+    def reconstruct_frame(self, amp_frame: np.ndarray, original_frame: np.ndarray):
+        """
+        Reconstructs the final frame by adding the amplified frame to the original frame.
 
-    def reconstruct_frame(self,
-                          amp_frame,
-                          original_frame):
+        Args:
+            amp_frame: Amplified frame.
+            original_frame: Original frame before amplification.
+
+        Returns:
+            np.ndarray: Reconstructed frame after adding the amplified frame to the original.
+        """
         final_video = np.zeros(original_frame.shape)
         img = amp_frame
         for x in range(self.level):
-            img = cv2.pyrUp(img)
-        img = img+original_frame
+            img = cv.pyrUp(img)
+        img = img + original_frame
         final_video = img
         return final_video
 
-    def magnify_color(self,
-                      frame,
-                      low,
-                      high):
-        # print([len(x) for x in self.pyramids[-self.backward_frames:]])
-        # print([len(x) for x in self.frames])
+    def magnify_color(self, frame: np.ndarray, low: float, high: float):
+        """
+        Magnifies the color changes in a frame.
+
+        Args:
+            frame: Current frame to be processed.
+            low: Lower frequency bound.
+            high: Upper frequency bound.
+
+        Returns:
+            np.ndarray: Final frame with magnified color changes.
+        """
         filtered = self.bandpass_filter(
-            self.pyramids[-self.backward_frames:], low, high)
+            self.pyramids[-self.backward_frames :], low, high
+        )
         amplified_frames = self.amplify_frame(filtered)
         final = self.reconstruct_frame(amplified_frames[-1], frame)
         return final
 
-    def apply_gaussian_pyramid(self,
-                               frame):
+    def apply_gaussian_pyramid(self, frame: np.ndarray):
+        """
+        Processes a frame through a Gaussian pyramid, storing the smallest level of the pyramid.
 
+        Args:
+            frame: Video frame to be processed.
+        """
         pyramid = self.build_gaussian_pyramid(frame)
         self.pyramids.append(pyramid)
-
-    def apply_laplacian_pyramid(self,
-                                frame):
-
-        lp_pyramid = self.laplacian_pyramid(frame)
-
-        for i in range(self.level):
-            self.laplacian_pyramids[i].append(lp_pyramid[i])
-
-    def convert_to_np(self):
-
-        for i in range(self.level):
-            self.laplacian_pyramids[i] = np.array(
-                self.laplacian_pyramids[i], dtype=np.float64)
-
-    def butter_bandpass_filter(self,
-                               data,
-                               lowcut,
-                               highcut,
-                               fs,
-                               order=5):
-
-        omega = 0.5 * fs
-        low = lowcut / omega
-        high = highcut / omega
-        b, a = signal.butter(order, [low, high], btype='band')
-        y = signal.lfilter(b, a, data, axis=0)
-        return y
-
-    def reconstract_from_tensorlist(self,
-                                    frame_tensor):
-
-        final = np.zeros(frame_tensor[0][-1].shape)
-        up = frame_tensor[0][-1]
-
-        for i in range(self.level-1):
-            up = cv2.pyrUp(up) + frame_tensor[i + 1][-1]
-        final = up
-
-        return final
-
-    def magnify_motion(self,
-                       frame,
-                       low,
-                       high):
-
-        # self.convert_to_np()
-        filter_tensor_list = []
-
-        for i in range(self.level):
-            np_laplacian = np.array(
-                self.laplacian_pyramids[i][-3:], dtype=np.float64)
-            tensor = self.butter_bandpass_filter(
-                np_laplacian, low, high, self.fps)
-            tensor *= self.amplification
-            filter_tensor_list.append(tensor)
-
-        recon = self.reconstract_from_tensorlist(filter_tensor_list)
-
-        final = frame + recon
-
-        return final
-
-    def save_video(self,
-                   video_tensor):
-
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        [height, width] = video_tensor[0].shape[0:2]
-        writer = cv2.VideoWriter(
-            "out_test.avi", fourcc, 30, (width, height), 1)
-        for i in range(0, video_tensor.shape[0]):
-            writer.write(cv2.convertScaleAbs(video_tensor[i]))
-        writer.release()
