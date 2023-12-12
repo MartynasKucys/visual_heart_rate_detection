@@ -40,9 +40,9 @@ def run():
         heart_rate = None
         if len(history_measurements) >= camera.frame_rate:
             heart_rate = hr_processor.get_current_bpm(
-                history_measurements, time_window=gui.time_window
+                history_measurements, time_window=1
             )
-
+        print(heart_rate)
         gui.update(
             current_frame_bytes, cv.imencode(".png", face)[
                 1].tobytes(), history_measurements, heart_rate

@@ -21,7 +21,7 @@ class HRSignalProcessor:
         signal: np.ndarray,
         lowcut: float = 0.8,
         highcut: float = 3,
-        order: int = 8,
+        order: int = 5,
     ):
         """
         Applies a Butterworth bandpass filter to a given signal.
@@ -55,6 +55,9 @@ class HRSignalProcessor:
         spectrum = np.array(np.fft.fft(signal).real)
         freqs = np.array(np.fft.fftfreq(len(signal), 1 / self.fs).real)
         # max_freq_index = np.argmax(np.abs(spectrum))
+        print("-"*50)
+        print("s", spectrum)
+        print("f", freqs)
         avg_sum_level = 3
         peak_frequency = sum(
             freqs[:avg_sum_level] * np.abs(spectrum[:avg_sum_level])) / sum(np.abs(spectrum[:avg_sum_level]))
