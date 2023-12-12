@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, find_peaks
 
 
 class HRSignalProcessor:
@@ -21,7 +21,7 @@ class HRSignalProcessor:
         signal: np.ndarray,
         lowcut: float = 0.8,
         highcut: float = 3,
-        order: int = 5,
+        order: int = 8,
     ):
         """
         Applies a Butterworth bandpass filter to a given signal.

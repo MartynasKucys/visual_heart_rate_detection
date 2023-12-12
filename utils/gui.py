@@ -14,6 +14,7 @@ class GUI:
             fs: Frame rate (sampling rate) used in calculations.
             time_window: Time window for the measurements.
         """
+        self.time_window = time_window
         self.layout = [
             [sg.Text("BPM: ", key="bpm_counter")],
             [sg.Image(filename="", key="image"), sg.Image(filename="", key="face")],
